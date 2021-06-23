@@ -1,0 +1,203 @@
+ <html> 
+      <head> 
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="style.css">
+        <title>DCS - 5</title> 
+
+      </head>
+
+      <body>
+
+      <h1>DCS - Lab 5 - Surfaces</h1>
+
+      <script src="math.min.js"></script>
+	  <script src="three.min.js"></script>
+	  <script src="OrbitControlsDCS.js"></script>
+    
+     <script type="text/javascript">
+		points = [{ x:136, y:219 },{ x:130, y:259 },{ x:265, y:258 },{ x:300, y:299 }]; // profile of the low part of the plunger
+	 
+        /**
+        * Partially based on code by Ikaros Kappler from http://int2byte.de/public/blog.20160129_Three.js_Basic_Scene_Setup/
+        **/
+		var windowWidth=800.0, windowHeight=600.0;
+		
+        // Create a scene
+        this.scene = new THREE.Scene(); 
+
+        // Create a camera 
+		// Parameters: vertical field of view, aspect ratio, near-clipping plane, far-clipping plane
+		var camera = new THREE.PerspectiveCamera(45, windowWidth / windowHeight, 0.1, 1000);
+
+        // Create a THREE renderer 
+        this.renderer = new THREE.WebGLRenderer( { antialias : true, alpha:true } );
+        this.shadowMapEnabled = true;
+        this.renderer.setSize(windowWidth, windowHeight);
+        document.body.appendChild(renderer.domElement); // append it to the DOM
+		
+        // position and point the camera to the center of the scene (0,0,0)
+        camera.position.x = 50;
+        camera.position.y = 60;
+        camera.position.z = 50;
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+		// Create light, with same position and direction as camera
+        this.spotLight = new THREE.SpotLight(0xffffff);
+		this.spotLight.position.copy(camera.position)
+		this.spotLight.target.position.copy (camera.lookAt); 
+        scene.add(spotLight);
+
+		
+		/**** Here is where the important stuff is: definition of parametric geometry ****/
+		// Examples of three parametric surface functions
+
+		// Note: the parametric functions will be evaluated only on [0,1] x [0,1]
+		// The function is called like this:
+		// for v=0 to 1 step ...
+		//    for u=0 to 1  step...
+		//        call function(u,v)		
+		
+		planeFunction = function(u, v) 
+		{
+			var s = this.functionExtent; //stretch value
+			var x = s*u;
+			var z = s*v;
+			var y = 5;
+			return new THREE.Vector3(x, y, z);
+		};
+		
+		waveFunction = function (u, v) {
+            var s = this.functionExtent; //stretch value
+            var x = s*u;
+			var z = s*v;
+            var y = 10*Math.sin(2*(u+v)*Math.PI);
+            return new THREE.Vector3(x, y, z);
+		}
+		
+		ellipsoidFunction = function (u, v) {
+			var a=40;
+			var b=20;
+			var c=30;
+			u = u * 2* Math.PI; // scale u to [0, 2PI]
+			v = v * Math.PI; // scale v to [0, PI]
+            var x = a*Math.cos(u)*Math.sin(v);
+			var z = b*Math.sin(u)*Math.sin(v);
+            var y = c*Math.cos(v);
+            return new THREE.Vector3(x, y, z);
+		}
+
+		 function cubicBezierCurve(controlPoints) {
+			  var computedPoints = [];
+			  var P_xt, P_yt;
+			  for (var t = 0; t <= 1.01; t += 0.01) {
+					P_xt = P_yt = 0;
+					var Taylor = [];
+					Taylor.push(-Math.pow(t,3) + 3*Math.pow(t,2) - 3*t + 1);
+					Taylor.push(3*Math.pow(t,3) - 6*Math.pow(t,2) + 3*t);
+					Taylor.push(-3*Math.pow(t,3) + 3*Math.pow(t,2));
+					Taylor.push(Math.pow(t,3));
+
+					for (var i = 0; i < controlPoints.length; i++) {
+						/* Note this is more efficient than using 'bezierCurve' */
+						P_xt += Taylor[i]*controlPoints[i].x;
+						P_yt += Taylor[i]*controlPoints[i].y;
+					} 
+					computedPoints.push({x:P_xt,y:P_yt});
+			  }        
+			  return computedPoints;
+		 }
+	 
+		plungerFunction = function (u, v) {
+			//var computedPoints = cubicBezierCurve(points);
+			u = u * 2* Math.PI; // scale u to [0, 2PI]
+            //var x = a*Math.cos(u)*Math.sin(v);
+			//var z = b*Math.sin(u)*Math.sin(v);
+            //var y = c*Math.cos(v);
+            //return new THREE.Vector3(computedPoints.x*Math.cos(u), computedPoints.y, computedPoints.x*Math.sin(u));
+			return new THREE.Vector3(50*Math.cos(u), 50*Math.sin(u), 0);
+		}
+		
+		// Function to create the actual mesh
+        function createMesh(geom) {
+			// Translate geometry to center of scene
+            geom.applyMatrix(new THREE.Matrix4().makeTranslation(-functionExtent/2, 0, -functionExtent/2));
+            // Assign material
+            var meshMaterial = new THREE.MeshLambertMaterial({color:0xff5555, wireframe:false}); // You can disable wireframe
+            meshMaterial.side = THREE.DoubleSide;
+            // create a multimaterial and return it
+            return THREE.SceneUtils.createMultiMaterialObject(geom, [meshMaterial]);
+        }
+	
+		// Create and add parametric surface function (i.e., parametric geometry) to scene
+		this.functionExtent = 60;
+		var slides = functionExtent/3; //Number of evaluations on first variable
+		var stacks = functionExtent/3; //Number of evaluations on second variable
+		
+		var parametricFunction = plungerFunction; // Example 1
+		//var parametricFunction = waveFunction;  // Example 2
+		//var parametricFunction = ellipsoidFunction;  // Example 3
+		
+		// Create parametric geometry based on parametric function
+		var graphGeometry = new THREE.ParametricGeometry(parametricFunction, slides, stacks); 
+		
+		// Add it to scene
+		this.scene.add(createMesh(graphGeometry));
+
+		/****************************/
+		
+		// Auxiliary things
+		
+        // Add grid helper
+		var gridExtent=80;
+        var gridHelper = new THREE.GridHelper( gridExtent, gridExtent/10 );
+        gridHelper.colorGrid = 0xE8E8E8;
+        this.scene.add( gridHelper );
+
+        // Add an axis helper
+        var ah = new THREE.AxisHelper(50);
+        ah.position.y -= 0.1;  // The axis helper should not interfere with the grid helper
+        this.scene.add( ah );
+
+        // Add an orbit control helper, to navigate scence with mosue
+        var _self = this;
+        this.orbitControls = new THREE.OrbitControls( this.camera, this.renderer.domElement );
+        // Always move the point light with the camera. Looks much better ;)
+        this.orbitControls.addEventListener( 'change',
+        function() { _self.spotLight.position.copy(_self.camera.position); }
+        );
+        this.orbitControls.enableDamping = true;
+        this.orbitControls.dampingFactor = 1.0;
+        this.orbitControls.enableZoom    = true;
+        this.orbitControls.target.copy(new THREE.Vector3(0, 0, 0));
+
+        // This is the basic render function. It will be called perpetual, again and again,
+        // depending on your machines possible frame rate.
+        this._render = function () {
+            // Pass the render function itself
+            requestAnimationFrame(this._render);
+            this.renderer.render(this.scene, this.camera);
+        };
+
+        // Call the rendering function. This will cause an infinite recursion
+        this._render();
+		
+	  </script>
+      <br>
+      <div style="padding-left: 20px;  class="bezier"> 
+	  <b>Note: </b> X axis is red, Y axis is green, Z axis is blue.
+	  Each grid square on the plane Y=0 has size 10x10.
+      </body>
+      </div>
+
+<div style="padding-left: 20px;  class="bezier"> 
+    <h3> Parametrization of the surface </h3>
+    <p> Notice that the two directrices are the lines <i> c(u) </i> and <i> d(u) </i>, and the resulting surface <i> S(u,v) </i> can be represented as follows: </p>
+    <img src="https://latex.codecogs.com/gif.latex?c(u)=(1-u)a_{1}&plus;ua_{2},&space;\,\,\,&space;d(u)=(1-u)b_{1}&plus;ub_{2}" class="center" />
+    <p> Thus, the resulting surface can be defined in the following way: </p>
+    <img src="https://latex.codecogs.com/gif.latex?S(u,v)=(1-v)((1-u)a_{1}&plus;ua_{2})&plus;v((1-u)b_{1}&plus;ub_{2})" class="center" />
+    <p> which is the hyperbolic paraboloid that interpolates the four points a<sub>1</sub>, a<sub>2</sub>, b<sub>1</sub>, b<sub>2</sub> bilinearly. </p>
+    <p> Note that the resulting hyperbolic paraboloid is a doubly ruled surface: it contains two families of mutually skew lines. The lines in each family are parallel to a common plane, but not to each other. </p>
+    <p> In order to generate a surface that satisfies the requirements of the problem one just needs to set proper values for a<sub>1</sub>, a<sub>2</sub>, b<sub>1</sub>, b<sub>2</sub> so that they result in lines that do not intersect and are not parallel.
+</div>
+
+</html>

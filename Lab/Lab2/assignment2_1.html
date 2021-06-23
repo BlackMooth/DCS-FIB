@@ -1,0 +1,42 @@
+ <html> 
+      <head> 
+      <link rel="stylesheet" href="style.css">
+      <title>DCS - 2.1</title> 
+
+      </head>
+
+      <body>
+
+      <h1>DCS - 2.1 Elliptical and Spiral Helixes in 3D</h1>
+      To delete all helixes of the scene, play Reset button <button type="button" onclick="doReset()">Reset</button> <br>
+      <div style="width: 100%; display: flex">
+          <div style="width:600px;" class="center">
+              <h3> Elliptical Helix </h3>
+              Equation: &#947; = (a·cos(t), b·sin(t), c·t) <br>
+              <input id="ellipticalHelixA" placeholder="a value">
+              <input id="ellipticalHelixB" placeholder="b value">
+              <input id="ellipticalHelixC" placeholder="c value"> <br>
+              t from <input id="ellipticalHelix_t_from" placeholder="t from"> to <input id="ellipticalHelix_t_to" placeholder="t to">
+              <button type="button" onclick="buildEllipticalHelix()">Draw</button> <br>
+          </div>
+
+          <div style="width: 600px;" class="center">
+              <h3> Spiral Helix </h3>
+              Equation: &#947; = (a·t·cos(t), a·t·sin(t), b·t) <br>
+              <input id="spiralHellixA" placeholder="a value">
+              <input id="spiralHellixB" placeholder="b value"> <br>
+              t from <input id="spiralHelix_t_from" placeholder="t from"> to <input id="spiralHelix_t_to" placeholder="t to">
+              <button type="button" onclick="buildSpiralHelix()">Draw</button>
+          </div>
+      </div>
+
+      <script src="math.min.js"></script>
+      <script src="three.min.js"></script>
+      <script src="OrbitControlsDCS.js"></script>
+      <script src="main1.js"></script>
+
+      <br>
+		Note: X axis is red, Y axis is green, Z axis is blue. Each grid square on the plane Y=0 has size 10x10.      
+      </body>
+
+      </html>

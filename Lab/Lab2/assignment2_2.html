@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css">
+    <title>DCS - 2.2</title>
+
+    <!--- Math.js library, for matrix manipulation, and many other things--->
+    <script src=https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.3.0/math.min.js></script>
+</head>
+
+<body>
+
+<div style="padding-left: 20px;  class="center">    
+    <h1>DCS - 2.2 Properties of conics</h1>
+    <h3>Parabola</h3>
+    <p> The following illustration pretends to show the reflection property of the parabola. The curve below (in red) represents a parabola whose axis of symmetry is the vertical line X = 0.
+    The curve can be described in terms of the following explicit equation (note that for this particular case, the 'a' parameter is setted to 1/200, so the parabola is opening to the top): </p>
+    <img src="https://latex.codecogs.com/gif.latex?f:&space;\mathbb{R}\rightarrow&space;\mathbb{R}" title="f: \mathbb{R}\rightarrow \mathbb{R}" class="center"/>
+    <img src="https://latex.codecogs.com/gif.latex?f(x)&space;=&space;ax^{2}" title="f(x) = ax^{2}" class="center"/>
+    <p> As you can observe, there appears 10 different vertical rays that intersects the parabola in 10 different points, but all of them are reflected into the same point, the focus of the parabola.
+    We will now find the coordinates of the focus and we will try to give a geometric argument in order to justify the above illustrated property. Let's go there!</p>
+</div>
+
+<canvas id="canvas1" height="600" width="600" class="center"  style="border:1px solid #d3d3d3;"></canvas>
+
+<div style="padding-left: 20px; class="center">    
+    <h3>Computing the focus of the parabola</h3>
+    <p> We are going to make an informal prove of the reflection property of the parabola, which stands that all rays parallel to the axis of symmetry of the parabola are reflected into the same point: the focus of the parabola.</p>
+    <p> Without loss of generality, let's assume that the axis of symmetry of our parabola is X=0. Let's consider a ray that intersects our parabola, which is defined by f(x)=ax<sup>2</sup>, in a point P=(x<sub>0</sub>,y<sub>0</sub>), as in the below diagram. </p>
+    <p> Let's consider a line tangent to the parabola in the point P (named 't'). Notice that it is described by the following equation: </p>
+    <img src="https://latex.codecogs.com/gif.latex?y_t&space;=&space;a_t&space;x&plus;b_t" title="y_t = a_t x+b_t" class="center"/>
+    <p> where a<sub>t</sub> (the slope of the line) is simply the derivative of f(x) at x<sub>0</sub>, which is just: f'(x<sub>0</sub>)=2ax<sub>0</sub>. </p>
+    <p> We know, as a previous result, that when a ray is reflected from a surface, the angle of incidence (&#945) is always equal to the angle of reflection, where both angles are measured from the path of the ray to the normal to the surface (in yellow) at the point at which the ray strikes the surface (<b>Law of Reflection</b>). This result implies that the focus can be obtained by finding the equation of the reflected line, that goes from P to the axis of symmetry (in F). </p>
+
+    <img style="width: 800px" src="assignment2_2_fig.png" class="center">
+
+    <p> Let's find an equation for the reflection line, y<sub>r</sub>! It has, again, the form: </p>
+    <img src="https://latex.codecogs.com/gif.latex?y_r&space;=&space;a_r&space;x&plus;b_r" title="y_r = a_r x+b_r" class="center"/>
+    <p> Observe that the slope angle of the curve is just &#946, so you can obtain a_r by computing tan(&#946). By inspecting the triangle FTP, one can easily see that: 2·&#945 + 90º + &#946 = 180º, which means that: </p>
+    <img src="https://latex.codecogs.com/gif.latex?tan(\beta)&space;=&space;tan(90^{\circ}-2\alpha)" title="tan(\beta) = tan(90^{\circ}-2\alpha)" class="center"/>
+    <p> Note that
+    <img style="width: 125px" src="https://latex.codecogs.com/gif.latex?tan(\alpha-90^{\circ})&space;=&space;-cot(2\alpha)" title="tan(\alpha-90^{\circ}) = -cot(2\alpha)" />, 
+    which implies that
+    <img style="width: 125px" src="https://latex.codecogs.com/gif.latex?tan(\beta)&space;=&space;1/tan(2\alpha)" title="tan(\beta) = 1/tan(2\alpha)" />. 
+    Also note that 
+    <img style="width: 125px" src="https://latex.codecogs.com/gif.latex?tan(2\alpha)&space;=&space;2tan(\alpha)/1-tan^2(\alpha)" title="tan(2\alpha) = 2tan(\alpha)/1-tan^2(\alpha)" />,
+    but we already know what tan(&#945) is, because it's just the value of f'(x<sub>0</sub>), which is just 2ax<sub>0</sub>. So, combining the last two results, we get: </p>
+    <img src="https://latex.codecogs.com/gif.latex?tan(\beta)&space;=&space;\frac{1}{tan(2\alpha)}=\frac{1-tan^2(\alpha)}{2tan(\alpha)}=\frac{1-4a^2x_0^2}{4ax_0}" title="tan(\beta) = \frac{1}{tan(2\alpha)}=\frac{1-tan^2(\alpha)}{2tan(\alpha)}=\frac{1-4a^2x_0^2}{4ax_0}" class="center" />
+    <p> Thus, we can write the reflected line, y<sub>r</sub> in this way: </p>
+    <img src="https://latex.codecogs.com/gif.latex?y_r&space;=\frac{1-4a^2x_0^2}{4ax_0}x&plus;b_r" title="y_r =\frac{1-4a^2x_0^2}{4ax_0}x+b_r" class="center"/>
+    <p> As well as we know that the reflected line intersects the parabola at x<sub>0</sub>, we can find the following expression for b<sub>r</sub> after some minor calculation (evaluating y<sub>r</sub> at x=0): </p>
+    <img src="https://latex.codecogs.com/gif.latex?b_r&space;=\frac{1}{4a}" title="b_r =\frac{1}{4a}" class="center"/>    <p> Now it is pretty clear that <b>any vertical ray</b>, independently on its x-position, <b>will be reflected into the point (0, 0.25/a)</b>, which is just the focus of the parabola! </p>
+    <p> So, for our previous case (y = x<sup>2</sup>/200), we have that F = (0, 0.25·200) = (0, 50) </p>
+</div>
+
+<script src="main2.js"></script>
+</body>
+</html>

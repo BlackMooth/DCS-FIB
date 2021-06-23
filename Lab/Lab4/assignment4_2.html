@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css">
+    <title>DCS - 4.4</title>
+
+    <!--- Math.js library, for matrix manipulation, and many other things--->
+    <script src="math.min.js"></script>
+    <script type="text/javascript" src="WriteToFile.json.js"></script>
+</head>
+
+<body>
+
+<div style="padding-left: 20px; class="bezier">     
+    <button onClick="addControlPoints()">Add Control Points</button> <br>
+    <b> New Bézier Curve with </b> <input id="additionalControlPoints" placeholder="Enter a positive integer > 1"></input> <b> points </b>
+    <button onClick= "newBezierCurve()"> Create New Curve </button>
+</div>
+
+<canvas id="canvas1" height="800" width="1000" class="center"  style="border:1px solid #d3d3d3;"></canvas>
+<br>
+<b> Note: </b> <b style="color: red;"> Load the 'control_points.txt' file in this local folder in order to see the contour generated for this letter. 6 different Bézzier curves have been used </b> <br>
+<b> Load control points: </b> <input type="file" id="file-input"/>
+<br>
+<b> Save control points: </b> <button type="button" onclick="doSave()">Save</button>
+
+<script type="text/javascript">
+
+    /*
+    * Part of this code is based on:
+        * http://blogs.sitepoint.com/html5-canvas-draw-quadratic-curves/
+        * http://blogs.sitepoint.com/html5-canvas-draw-bezier-curves/
+    */
+
+    var canvas1, context1, points, myTransformation, style, bezierCurveStyle, drag = null, draggedPoint, compositeCurves = [], additionalControlPoints = [];
+    var letter = 'D'; // Your letter goes here
+
+    points = [{ x:100, y:300 },{ x:200, y:300 },{ x:300, y:300 },{ x:400, y:300 }];
+
+    function init() {
+
+        myTransformation = function(p){return p}; //Identity transform
+
+        // default styles
+        style = {
+            curve:	{ width: 6, color: "#333" },
+            line:	{ width: 1, color: "#C00" },
+            point: { radius: 10, width: 2, color: "#900", fill: "rgba(200,200,200,0.5)", arc1: 0, arc2: 2 * Math.PI }
+        }
+
+        bezierCurveStyle = {
+            curve:	{ width: 6, color: "#FF0000" },
+            line:	{ width: 1, color: "#C00" },
+            point: { radius: 10, width: 2, color: "#900", fill: "rgba(200,200,200,0.5)", arc1: 0, arc2: 2 * Math.PI }
+        }
+
+        // line style defaults
+        context1.lineCap = "round";
+        context1.lineJoin = "round";
+
+        // event handlers (only canvas1)
+        canvas1.onmousedown = dragStart;
+        canvas1.onmousemove = dragging;
+        canvas1.onmouseup = canvas1.onmouseout = dragEnd;
+
+        drawCanvas();
+    }
+
+
+    /**
+     Basic drawing methods
+     **/
+
+
+    // draw canvas
+    function drawCanvas() {
+        // Clear everything
+        context1.clearRect(0, 0, canvas1.width, canvas1.height);  // Clear canvas
+
+        // Background grids
+        drawGrid(context1,canvas1.width, canvas1.height); // Draw background grid
+
+        // Background letter
+		context1.fillStyle = "lightgray";
+        context1.font = "800px Times";
+        context1.fillText(letter,100,600);
+
+        // Curve through points and vertices
+        drawCurve(context1, style, points.slice(0,4)); // Draw curve
+        drawVertices(context1, style, points.slice(0,4)); // Draw vertices as circles
+        /* Draw the initial Cubic Bezier Curve with the 4 points given by default */ 
+        cubicBezierCurve(points.slice(0,4));
+
+        /* Ensure C^1 continuity 
+        if (points.length > 4) {
+            for (var i = 0; i < additionalControlPoints.length; i++) {
+                points[additionalControlPoints[i][1]].x = 2*points[additionalControlPoints[i][0]].x - points[additionalControlPoints[i][0]-1].x; // Q_1 = 2·P_n - P_n-1
+                points[additionalControlPoints[i][1]].y = 2*points[additionalControlPoints[i][0]].y - points[additionalControlPoints[i][0]-1].y;
+            }
+        } */
+
+        /* Ensure C^1 continuity */
+        if (points.length > 4) {
+            for (var i = 0; i < additionalControlPoints.length; i++) {
+                if (additionalControlPoints[i][0] > 3) {
+                    if (i > 0) {
+                        var n = additionalControlPoints[i-1].length-1;
+                        var found = false;
+                        if (additionalControlPoints[i-1][n] == additionalControlPoints[i][0]) {
+                            points[additionalControlPoints[i][1]].x = (1+n/3)*points[additionalControlPoints[i][0]].x - (n/3)*points[additionalControlPoints[i-1][n-1]].x;   // Q_1 = (3/3+n)·P_n - (n/3+n)·P_n-1
+                            points[additionalControlPoints[i][1]].y = (1+n/3)*points[additionalControlPoints[i][0]].y - (n/3)*points[additionalControlPoints[i-1][n-1]].y;
+                            found = true;
+                        }
+                        if (!found) {
+                            stop = false;    
+                            for (var j = 0; j < compositeCurves.length && !stop; j++) {
+                                /* It would be MUCH more elegant to use Dicotomic Search... */
+                                n = compositeCurves[j].length-1;
+                                if (compositeCurves[j][n] == additionalControlPoints[i][0]) {
+                                    points[additionalControlPoints[i][1]].x = (1+n/3)*points[additionalControlPoints[i][0]].x - (n/3)*points[compositeCurves[j][n-1]].x;   // Q_1 = (3/3+n)·P_n - (n/3+n)·P_n-1
+                                    points[additionalControlPoints[i][1]].y = (1+n/3)*points[additionalControlPoints[i][0]].y - (n/3)*points[compositeCurves[j][n-1]].y;
+                                    stop = true;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        stop = false;
+                        for (var j = 0; j < compositeCurves.length && !stop; j++) {
+                            /* It would be MUCH more elegant to use Dicotomic Search... */
+                            var n = compositeCurves[j].length-1;
+                            if (compositeCurves[j][n] == additionalControlPoints[i][0]) {
+                                points[additionalControlPoints[i][1]].x = (1+n/3)*points[additionalControlPoints[i][0]].x - (n/3)*points[compositeCurves[j][n-1]].x;   // Q_1 = (3/3+n)·P_n - (n/3+n)·P_n-1
+                                points[additionalControlPoints[i][1]].y = (1+n/3)*points[additionalControlPoints[i][0]].y - (n/3)*points[compositeCurves[j][n-1]].y;                            
+                                stop = true;
+                            }
+                        }
+                    }
+                }
+                else {
+                    points[additionalControlPoints[i][1]].x = 2*points[additionalControlPoints[i][0]].x - points[additionalControlPoints[i][0]-1].x; // Q_1 = 2·P_n - P_n-1
+                    points[additionalControlPoints[i][1]].y = 2*points[additionalControlPoints[i][0]].y - points[additionalControlPoints[i][0]-1].y;
+                }
+            }
+        }
+
+        /* Draw all the additional control points that have been added to an initial composite curve */
+        for (var i = 0; i < additionalControlPoints.length; i++) {
+            drawCurve(context1, style, points.slice(additionalControlPoints[i][0], additionalControlPoints[i].length + additionalControlPoints[i][0]));
+            drawVertices(context1, style, points.slice(additionalControlPoints[i][0], additionalControlPoints[i].length + additionalControlPoints[i][0]));
+            cubicBezierCurve(points.slice(additionalControlPoints[i][0], additionalControlPoints[i].length + additionalControlPoints[i][0]));
+        }
+
+        /* Draw all the composite curves introduced by the user */
+        for (var i = 0; i < compositeCurves.length; ++i) {
+            drawCurve(context1, style, points.slice(compositeCurves[i][0], compositeCurves[i].length + compositeCurves[i][0]));
+            drawVertices(context1, style, points.slice(compositeCurves[i][0], compositeCurves[i].length + compositeCurves[i][0]));
+            bezierCurve(points.slice(compositeCurves[i][0], compositeCurves[i].length + compositeCurves[i][0]));
+        }
+    }
+
+
+    // Draw a background grid
+    function drawGrid(myContext,bw,bh){
+        var delta = 50; // grid cell size
+
+        for (var x = 0; x <= bw; x += delta) {
+            myContext.moveTo(x, 0);
+            myContext.lineTo(x, bh);
+        }
+
+        for (var y = 0; y <= bh; y += delta) {
+            myContext.moveTo(0, y);
+            myContext.lineTo(bw , y);
+        }
+
+        myContext.lineWidth = 1;
+        myContext.strokeStyle = "lightgray";
+        myContext.stroke();
+
+        myContext.fillStyle = "black";
+        myContext.font = "12px Arial";
+        myContext.fillText("(0,0)",2,12);
+
+    }
+
+    // Draws a polygonal curve connecting the points, after applying the given transformation
+    function drawCurve(ctx, style, points, transformation) {
+        // The transformation is optional. If none provided, use identity transform
+        if (transformation===undefined) {
+            transformation = function(p){return p}; //Identity transform
+        }
+
+        // Draw curve
+        ctx.lineWidth = style.curve.width;
+        ctx.strokeStyle = style.curve.color;
+        ctx.beginPath();
+        var firstPoint = transformation(points[0]);
+        var currentPoint;
+        ctx.moveTo(firstPoint.x, firstPoint.y);
+        for (var i = 0; i < points.length; i++) {
+            currentPoint =  transformation(points[i]);
+            ctx.lineTo(currentPoint.x, currentPoint.y);
+            ctx.moveTo(currentPoint.x, currentPoint.y);
+        }
+        ctx.stroke();
+    }
+
+    // Draw circles around vertices to facilitate drag and drop
+    function drawVertices (ctx, style, points) {
+        for (var i = 0; i < points.length; i++) {
+            var p = points[i];
+            ctx.lineWidth = style.point.width;
+            ctx.strokeStyle = style.point.color;
+            ctx.fillStyle = style.point.fill;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, style.point.radius, style.point.arc1, style.point.arc2, true);
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+
+    /**
+     Methods to allow dragging transformedPoints around
+     **/
+
+    // start dragging
+    function dragStart(e) {
+        e = mousePos(e);
+        var dx, dy;
+        for (var i=0; i<points.length;i++) {
+            dx = points[i].x - e.x;
+            dy = points[i].y - e.y;
+            if ((dx * dx) + (dy * dy) < style.point.radius * style.point.radius) {
+                drag = i;
+                draggedPoint = e;
+                canvas1.style.cursor = "move";
+                return;
+            }
+        }
+    }
+
+    // dragging
+    function dragging(e) {
+        if (drag!=null) {
+            e = mousePos(e);
+            points[drag].x += e.x - draggedPoint.x;
+            points[drag].y += e.y - draggedPoint.y;
+            draggedPoint = e;
+            drawCanvas();
+        }
+    }
+
+    // end dragging
+    function dragEnd(e) {
+        drag = null;
+        canvas1.style.cursor = "default";
+        drawCanvas();
+    }
+
+    // event parser
+    function mousePos(event) {
+        event = (event ? event : window.event);
+        return {
+            x: event.pageX - canvas1.offsetLeft,
+            y: event.pageY - canvas1.offsetTop
+        }
+    }
+
+    /**
+     * Start ("main method")
+     */
+
+    // Assign canvas and context variables
+    canvas1 = document.getElementById("canvas1");
+    context1 = canvas1.getContext("2d");
+
+    init();
+
+    /**
+     * Auxiliary functions
+     */
+
+     function fact(n) {
+        if (n < 2) return 1;
+        return n*fact(n-1);
+     }
+
+     /* Computes the binomial coefficient n over k */
+     function binomialCoefficient(n,k) {
+        return (fact(n)) / (fact(k)*fact(n-k)); 
+     }
+
+     /* Computes the cubic Bezier curve for 4 points using the Taylor series representation */
+     function cubicBezierCurve(controlPoints) {
+          var computedPoints = [];
+          var P_xt, P_yt;
+          for (var t = 0; t <= 1.01; t += 0.05) {
+                P_xt = P_yt = 0;
+                var Taylor = [];
+                Taylor.push(-Math.pow(t,3) + 3*Math.pow(t,2) - 3*t + 1);
+                Taylor.push(3*Math.pow(t,3) - 6*Math.pow(t,2) + 3*t);
+                Taylor.push(-3*Math.pow(t,3) + 3*Math.pow(t,2));
+                Taylor.push(Math.pow(t,3));
+
+                for (var i = 0; i < controlPoints.length; i++) {
+                    /* Note this is more efficient than using 'bezierCurve' */
+                    P_xt += Taylor[i]*controlPoints[i].x;
+                    P_yt += Taylor[i]*controlPoints[i].y;
+                } 
+                computedPoints.push({x:P_xt,y:P_yt});
+          }        
+          drawCurve(context1,bezierCurveStyle,computedPoints);
+     }
+
+     /* Computes a Bezier curve for an arbitrary number of control points */
+     function bezierCurve(controlPoints) {
+          var computedPoints = [];
+          var n = controlPoints.length - 1;
+          for (var t = 0; t <= 1.01; t += 0.01) {
+                var P_xt = 0, P_yt = 0;
+                for (var i = 0; i <= n; i++) {
+                    /* Computing the Bernstein polynomials */
+                    var B_ni = binomialCoefficient(n,i) * Math.pow(t,i) * Math.pow(1-t,n-i);
+                    P_xt += B_ni * controlPoints[i].x;
+                    P_yt += B_ni * controlPoints[i].y;
+                }
+                computedPoints.push({x:P_xt,y:P_yt});
+          }
+          drawCurve(context1,bezierCurveStyle,computedPoints);
+     }
+
+     /* Adds 3 new "randomly" generated control points. So, this function composes the curve: P0...Pn that has been created right now, 
+        with a 'new' cubic Bezier curve: Q0...Qm, m being 3 (note that the last point of the initial curve "coincides" with the first point of 
+        the new one and the actual coordinates of Q1 depends on those of Pn = Q0). I guess this, combined with the first part of 'drawCanvas' should be enough to solve the Problem 2 */
+     function addControlPoints() {
+          var n = points.length - 1;
+          /* Generate Q1, Q2 and Q3 randomly. Q1 will be adjusted in 'drawCanvas' */
+          for (var i = 1; i <= 3; i++) {
+                var Q_ix = Math.floor((Math.random() * 600) + 100);
+                var Q_iy = Math.floor((Math.random() * 400) + 100);
+                point = {x: Q_ix, y: Q_iy};
+                points.push(point);
+          }
+
+          additionalControlPoints.push([n,n+1,n+2,n+3]);
+          drawCanvas();
+     }
+
+     /* This function, combined with the last part of 'drawCanvas' should be enough to solve Problem 3 */
+     function newBezierCurve() {
+          var numberOfNewPoints = document.getElementById("additionalControlPoints").value;
+          if (numberOfNewPoints > 1) {
+              var Q_x, Q_y, point, n = points.length;
+              var index = [];
+
+              for (var i = 0; i < numberOfNewPoints; i++) {
+                    Q_x = Math.floor((Math.random() * 600) + 100); //  x between 100 and 700
+                    Q_y = Math.floor((Math.random() * 400) + 100); // y between 200 and 500
+                    point = {x: Q_x, y: Q_y};
+                    points.push(point);
+                    index.push(n+i);
+              }
+          
+              compositeCurves.push(index);
+              drawCanvas();
+          }
+     }
+
+      /**
+     * Auxiliary functions for file handling
+     */
+	function saveToFile(text, name, type) {
+			var a = document.createElement("a");
+			var file = new Blob([text], {type: type});
+			a.href = URL.createObjectURL(file);
+			a.download = name;
+			a.click();
+		}
+
+
+	function doSave() {
+		//Save control points as JSON string to a file
+		saveToFile(JSON.stringify(points) + '\r\n' + JSON.stringify(compositeCurves) + '\r\n' + JSON.stringify(additionalControlPoints), 'control_points.txt', 'text/plain');
+        //saveToFile(JSON.stringify(points),'control_points.txt', 'text/plain');
+    }
+	
+	function readSingleFile(e) {
+	  var file = e.target.files[0];
+	  if (!file) {
+		return;
+	  }
+	  var reader = new FileReader();
+	  reader.onload = function(e) {
+		var contents = e.target.result;
+		updateContents(contents);
+	  };
+	  reader.readAsText(file);
+	}
+
+	function updateContents(contents) {
+	  // Replace control points by object read from file
+      var contents1 = [], contents2 = [], contents3 = [], i = 0;
+      /* Copying the points from the file */
+      while(contents[i] != "\r") {
+        contents1 += contents[i];
+        i++;
+      }
+      /* Copying the 'independent' bezier curves from the file */
+      i = i+2;
+      while (contents[i] != "\r") {
+           contents2 += contents[i];
+           i++;
+      }
+      /* Copying the added control points from the file */
+      i = i + 2;
+      while (i < contents.length) {
+        contents3 += contents[i];
+        i++;
+      }
+
+	  points = JSON.parse(contents1);
+      compositeCurves = JSON.parse(contents2);
+      additionalControlPoints = JSON.parse(contents3);
+	  // Redraw
+	  drawCanvas();
+	}
+
+	document.getElementById('file-input')
+	  .addEventListener('change', readSingleFile, false);
+
+</script>
+</body>
+</html>

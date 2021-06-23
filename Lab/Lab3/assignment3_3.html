@@ -1,0 +1,48 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css">
+    <title>DCS - 3.3</title>
+
+    <!--- Math.js library, for matrix manipulation, and many other things--->
+    <script src=https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.3.0/math.min.js></script>
+</head>
+
+<body>
+
+<div style="padding-left: 20px;  class="bezier"> 
+    <h1>DCS - 3.3 Cubic Hermite interpolation</h1>
+    <p> This little program draws a <b> Cubic Hermite polynomial </b> that interpolates two points: P<sub>0</sub>, P<sub>1</sub>, allowing the user to specify those points and the two tangent vectors: v<sub>0</sub>, v<sub>1</sub> at  P<sub>0</sub> and P<sub>1</sub>, respectively.
+    By default, when no points/vectors have been dragged yet, the interpolated curve uses P<sub>0</sub> = (200,200), P<sub>1</sub> = (400,300), v<sub>0</sub> = (100,100) and v<sub>1</sub> = (100,0). </p>
+
+    <b>Mark the position of the curve at t=0.5 <input id="markPositionAtOneHalf" type="checkbox"/> </b>
+    <button type="button" onclick="drawCanvas()">Mark</button>
+</div>
+
+<canvas id="canvas1" height="600" width="800" class="center"  style="border:1px solid #d3d3d3;"></canvas>
+<br>
+
+<div style="padding-left: 20px;  class="bezier"> 
+    <h3> Computing the position of the curve at t=1/2 </h3>
+    <p> Note that the Hermite interpolation curve for two points: P<sub>0</sub>, P<sub>1</sub>, whose tangent vectors at those points are v<sub>0</sub>, v<sub>1</sub> can be expressed in terms of the following parametric equation:
+    <img src="https://latex.codecogs.com/gif.latex?\gamma&space;(t)=AP_{0}&plus;BP_{1}&plus;C\vec{v}_{0}&plus;D\vec{v}_{1}" class="center" /></p>
+    <p> These four coefficients: A, B, C and D are called "<b>Hermite blending functions</b>" and are defined (for a <b>Cubic</b> Hermite Interpolation) by these functions: </p>
+    <img src="https://latex.codecogs.com/gif.latex?A=2t^3-3t^2&plus;1,\;\;&space;B=-2t^3&plus;3t^2,&space;\;\;&space;C=t^3-2t^2&plus;t,&space;\;\;&space;D=t^3-t^2" class="center" />
+    <p> Thus, computing the position of the interpolated curve at t=1/2 just requires to evaluate the above expression for &#947(t) at t=0.5. For the aforementioned values P<sub>0</sub> = (200,200), P<sub>1</sub> = (400,300), v<sub>0</sub> = (100,100), v<sub>1</sub> = (100,0), we obtain: </p>
+    <img src="https://latex.codecogs.com/gif.latex?\gamma&space;(0.5)=\frac{1}{2}(200,200)&plus;\frac{1}{2}(400,300)&plus;\frac{1}{8}(100,100)-\frac{1}{8}(100,0)=(300,262.5)" class="center" />
+
+    <h3> How should the tangent vectors be modified in order to: keep the same directions at P<sub>0</sub> and P<sub>1</sub>, and at the same time go through (300, 300) at t = 1/2? </h3>
+    <p> If we want to keep the same directions at P<sub>0</sub> and P<sub>1</sub>, then the new tangent vectors should be parallel to the original ones: v<sub>0</sub> and v<sub>1</sub>. So, in order to find such a new pair of vectors, we can introduce two new coefficients: <b>m</b> and <b>n</b>, multiplying the original tangent vectors, and then evaluate the resulting expression at t=1/2 (imposing that the new value at that point must be (300,300)): </p>
+    <img src="https://latex.codecogs.com/gif.latex?\gamma&space;(0.5)=\frac{1}{2}(200,200)&plus;\frac{1}{2}(400,300)&plus;\frac{1}{8}m(100,100)-\frac{1}{8}n(100,0)=(300,300)" class="center" />
+    <p> After some minor simplification, we obtain the following system of two equations for two unknown variables: <b>m</b> and <b>n</b> </p>
+    <img src="https://latex.codecogs.com/gif.latex?\left\{\begin{matrix}&space;\gamma&space;_{x}(t=0.5)=300&plus;\frac{25}{2}m-\frac{25}{2}n=300&space;&&space;\\&space;\gamma&space;_{y}(t=0.5)=250&plus;\frac{25}{2}m-\frac{0}{8}n=300&space;&&space;\end{matrix}\right." class="center" />
+    <p> By solving it, we get <b>m = n = 4</b>. Therefore, the modified tangent vectors: v'<sub>0</sub>, v'<sub>1</sub> (that allows us to keep the same directions at P<sub>0</sub> and P<sub>1</sub>, and at the same time go through (300, 300) at t = 1/2) are: </p>
+    <img src="https://latex.codecogs.com/gif.latex?\vec{v_{0}}'=4\vec{v_{0}}=(400,400),\;&space;\;&space;\vec{v_{1}}'=4\vec{v_{1}}=(400,0)" class="center" />
+</div>
+
+<script src="interpolationMethods.js"></script>
+<script src="main3.js"></script>
+</body>
+</html>
